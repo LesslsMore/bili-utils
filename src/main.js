@@ -32,13 +32,22 @@ function create_button() {
 
 async function down_danmu() {
     let url = window.location.href
+    
+    // 匹配ep/ss格式
+    let epMatch = url.match(/(ep\d+)/) || url.match(/(ss\d+)/);
+    // 匹配BV格式
+    let bvMatch = url.match(/video\/(BV\w+)/);
 
-    let ep = url.match(/(ep\d+)/)[1]
-
-    if (ep) {
-        console.log(ep)
-        const {cid, title, long_title} = await fetchInfo(ep)
-        await downloadFile(cid, `${title} - ${long_title}`)
+    if (epMatch) {
+        const id = epMatch[1];
+        console.log(id);
+        const {cid, title, long_title} = await fetchInfo(id);
+        await downloadFile(cid, `${title} - ${long_title}`);
+    } else if (bvMatch) {
+        const bv = bvMatch[1];
+        console.log(bv);
+        const {cid, title, long_title} = await fetchVideoData(bv);
+        await downloadFile(cid, `${title}`);
     }
 }
 
@@ -86,6 +95,22 @@ async function fetchInfo(ep) {
         cid: json.result.play_view_business_info.episode_info.cid,
         long_title: json.result.play_view_business_info.episode_info.long_title,
         title: json.result.play_view_business_info.episode_info.title,
+    }
+}
+
+async function fetchVideoData(id) {
+    const data = await getText(`https://www.bilibili.com/video/${id}/`)
+    const str = data.match(/window\.__INITIAL_STATE__=(.*);\(function\(\){/)[1]
+
+    const json = JSON.parse(str)
+    // console.log(data)
+    // console.log(str)
+    console.log(json)
+    
+    return {
+        cid: json.videoData.cid,
+        long_title: json.videoData.title,
+        title: json.videoData.title,
     }
 }
 

@@ -1,12 +1,13 @@
 // ==UserScript==
-// @name         bilibili 番剧弹幕下载
+// @name         bilibili 视频弹幕下载
 // @namespace    https://github.com/LesslsMore/bili-utils
-// @version      0.1.0
+// @version      0.1.1
 // @author       lesslsmore
-// @description  bilibili 番剧弹幕下载，支持需要大会员的番剧
+// @description  bilibili 视频弹幕下载，支持各类视频弹幕下载，包括需要会员的视频以及需要大会员的番剧
 // @license      MIT
 // @icon         https://i0.hdslb.com/bfs/static/jinkela/long/images/favicon.ico
 // @match        *://*.bilibili.com/bangumi/*
+// @match        *://*.bilibili.com/video/*
 // @require      https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js
 // ==/UserScript==
 
@@ -36,11 +37,18 @@
   }
   async function down_danmu() {
     let url = window.location.href;
-    let ep = url.match(/(ep\d+)/)[1];
-    if (ep) {
-      console.log(ep);
-      const { cid, title, long_title } = await fetchInfo(ep);
+    let epMatch = url.match(/(ep\d+)/) || url.match(/(ss\d+)/);
+    let bvMatch = url.match(/video\/(BV\w+)/);
+    if (epMatch) {
+      const id = epMatch[1];
+      console.log(id);
+      const { cid, title, long_title } = await fetchInfo(id);
       await downloadFile(cid, `${title} - ${long_title}`);
+    } else if (bvMatch) {
+      const bv = bvMatch[1];
+      console.log(bv);
+      const { cid, title, long_title } = await fetchVideoData(bv);
+      await downloadFile(cid, `${title}`);
     }
   }
   async function getText(url) {
@@ -64,6 +72,17 @@
       cid: json.result.play_view_business_info.episode_info.cid,
       long_title: json.result.play_view_business_info.episode_info.long_title,
       title: json.result.play_view_business_info.episode_info.title
+    };
+  }
+  async function fetchVideoData(id) {
+    const data = await getText(`https://www.bilibili.com/video/${id}/`);
+    const str = data.match(/window\.__INITIAL_STATE__=(.*);\(function\(\){/)[1];
+    const json = JSON.parse(str);
+    console.log(json);
+    return {
+      cid: json.videoData.cid,
+      long_title: json.videoData.title,
+      title: json.videoData.title
     };
   }
   async function downloadFile(cid, title) {
