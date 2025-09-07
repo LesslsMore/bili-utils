@@ -49,21 +49,22 @@
     const str = data.match(/const playurlSSRData = (\{.*?\}\n)/s)[1];
     const json = JSON.parse(str);
     console.log(json);
+    const res = json.data;
     return {
-      cid: json.result.play_view_business_info.episode_info.cid,
-      long_title: json.result.play_view_business_info.episode_info.long_title,
-      title: json.result.play_view_business_info.episode_info.title
+      cid: res.result.play_view_business_info.episode_info.cid,
+      long_title: res.result.supplement.ogv_episode_info.long_title,
+      title: res.result.supplement.ogv_episode_info.index_title
     };
   }
   async function fetchVideoData(id) {
     const data = await getText(`https://www.bilibili.com/video/${id}/`);
     const str = data.match(/window\.__INITIAL_STATE__=(.*);\(function\(\){/)[1];
-    const json = JSON.parse(str);
-    console.log(json);
+    const res = JSON.parse(str);
+    console.log(res);
     return {
-      cid: json.videoData.cid,
-      long_title: json.videoData.title,
-      title: json.videoData.title
+      cid: res.videoData.cid,
+      long_title: res.videoData.title,
+      title: res.videoData.title
     };
   }
   async function downloadFile(cid, title) {

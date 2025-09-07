@@ -41,6 +41,7 @@ bilibili、腾讯视频弹幕下载，支持各类视频弹幕下载，包括需
 下载下来的弹幕可以结合 [动漫弹幕播放](https://github.com/LesslsMore/anime-danmu-play) 中手动上传弹幕的功能实现免费的动漫弹幕在线观看
 
 ### 更新记录
+0.1.3  支持 bilibili 新接口
 
 0.1.2  支持腾讯视频弹幕下载
 

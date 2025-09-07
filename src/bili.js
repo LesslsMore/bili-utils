@@ -47,6 +47,7 @@ async function fetchInfo(ep) {
     // console.log(data)
     // console.log(str)
     console.log(json)
+    const res = json.data
     // this.title = json.mediaInfo.title
     // this.cover = json.mediaInfo.cover
     // this.squareCover = json.mediaInfo.square_cover
@@ -62,9 +63,9 @@ async function fetchInfo(ep) {
 
 
     return {
-        cid: json.result.play_view_business_info.episode_info.cid,
-        long_title: json.result.play_view_business_info.episode_info.long_title,
-        title: json.result.play_view_business_info.episode_info.title,
+        cid: res.result.play_view_business_info.episode_info.cid,
+        long_title: res.result.supplement.ogv_episode_info.long_title,
+        title: res.result.supplement.ogv_episode_info.index_title,
     }
 }
 
@@ -72,15 +73,15 @@ async function fetchVideoData(id) {
     const data = await getText(`https://www.bilibili.com/video/${id}/`)
     const str = data.match(/window\.__INITIAL_STATE__=(.*);\(function\(\){/)[1]
 
-    const json = JSON.parse(str)
+    const res = JSON.parse(str)
     // console.log(data)
     // console.log(str)
-    console.log(json)
+    console.log(res)
 
     return {
-        cid: json.videoData.cid,
-        long_title: json.videoData.title,
-        title: json.videoData.title,
+        cid: res.videoData.cid,
+        long_title: res.videoData.title,
+        title: res.videoData.title,
     }
 }
 
