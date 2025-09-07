@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili、腾讯视频弹幕下载
 // @namespace    https://github.com/LesslsMore/bili-utils
-// @version      0.1.2
+// @version      0.1.3
 // @author       lesslsmore
 // @description  bilibili、腾讯视频弹幕下载，支持各类视频弹幕下载，包括需要会员的视频以及需要大会员的番剧
 // @license      MIT
