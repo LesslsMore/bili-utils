@@ -9,10 +9,10 @@ export default defineConfig({
             userscript: {
                 name: 'bilibili、腾讯视频弹幕下载',
                 namespace: 'https://github.com/LesslsMore/bili-utils',
-                version: '0.1.3',
+                version: '0.2.1',
                 author: 'lesslsmore',
                 license: 'MIT',
-                description: 'bilibili、腾讯视频弹幕下载，支持各类视频弹幕下载，包括需要会员的视频以及需要大会员的番剧',
+                description: 'bilibili、腾讯视频弹幕下载，支持各类视频弹幕下载，包括需要会员的视频以及需要大会员的番剧。B站使用分段Protobuf接口，下载全量弹幕。',
                 icon: 'https://i0.hdslb.com/bfs/static/jinkela/long/images/favicon.ico',
                 match: [
                     '*://*.bilibili.com/bangumi/*',
