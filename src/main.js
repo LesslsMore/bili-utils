@@ -1,42 +1,52 @@
-
-import {down_bili_danmu} from "./bili.js";
-
-
-create_button()
-import { interceptor } from './interceptor';
-import {down_vqq_danmu} from "./vqq.js";
+import {down_bili_danmu} from './bili.js';
+import {interceptor} from './interceptor';
+import {down_vqq_danmu} from './vqq.js';
 
 interceptor();
+createButton();
 
-// await down_danmu()
+function updateButton(button, text, disabled) {
+    button.textContent = text;
+    button.disabled = disabled;
+    button.style.opacity = disabled ? '0.6' : '1';
+    button.style.cursor = disabled ? 'not-allowed' : 'pointer';
+}
 
-function create_button() {
-    // 创建悬浮按钮
-    const button = document.createElement("button");
-    button.textContent = "下载弹幕";
-    button.style.position = "fixed";
-    button.style.left = "10px"; // 距离左侧 10px
-    button.style.top = "50%"; // 垂直居中
-    button.style.transform = "translateY(-50%)"; // 垂直居中
-    button.style.zIndex = "9999"; // 确保按钮在最上层
-    button.style.padding = "10px 20px";
-    button.style.backgroundColor = "#fb7299";
-    button.style.color = "#fff";
-    button.style.border = "none";
-    button.style.borderRadius = "5px";
-    button.style.cursor = "pointer";
-    button.style.boxShadow = "0 2px 5px rgba(0, 0, 0, 0.2)";
+function createButton() {
+    const button = document.createElement('button');
+    updateButton(button, '下载弹幕', false);
 
-    // 添加点击事件
-    button.addEventListener("click", async () => {
-        const url = window.location.href
-        if (url.includes('bilibili')){
-            await down_bili_danmu()
-        } else if (url.includes('v.qq.com')){
-            await down_vqq_danmu()
+    Object.assign(button.style, {
+        position: 'fixed',
+        left: '10px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: '9999',
+        padding: '10px 20px',
+        backgroundColor: '#fb7299',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '5px',
+        boxShadow: '0 2px 5px rgba(0, 0, 0, 0.2)',
+        fontSize: '14px',
+        lineHeight: '1.4',
+    });
+
+    button.addEventListener('click', async () => {
+        const url = window.location.href;
+        const setStatus = (text, disabled) => updateButton(button, text, disabled);
+
+        try {
+            if (url.includes('bilibili')) {
+                await down_bili_danmu(setStatus);
+            } else if (url.includes('v.qq.com')) {
+                setStatus('下载中...', true);
+                await down_vqq_danmu();
+            }
+        } finally {
+            setStatus('下载弹幕', false);
         }
     });
 
-    // 将按钮添加到页面中
     document.body.appendChild(button);
 }
