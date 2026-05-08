@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili、腾讯视频弹幕下载
 // @namespace    https://github.com/LesslsMore/bili-utils
-// @version      0.2.2
+// @version      0.2.3
 // @author       lesslsmore
 // @description  bilibili、腾讯视频弹幕下载，支持各类视频弹幕下载，包括需要会员的视频以及需要大会员的番剧。B站使用分段Protobuf接口，下载全量弹幕。
 // @license      MIT
@@ -803,6 +803,7 @@
       return response;
     };
   }
+  const DM_DOWNLOAD_BUTTON_CLASS = "bili-utils-dm-download";
   interceptor();
   createButton();
   function updateButton(button, text, disabled) {
@@ -811,9 +812,38 @@
     button.style.opacity = disabled ? "0.6" : "1";
     button.style.cursor = disabled ? "not-allowed" : "pointer";
   }
+  function isBiliPage() {
+    return window.location.href.includes("bilibili");
+  }
+  function isVqqPage() {
+    return window.location.href.includes("v.qq.com");
+  }
   function createButton() {
     const button = document.createElement("button");
+    button.className = DM_DOWNLOAD_BUTTON_CLASS;
     updateButton(button, "下载弹幕", false);
+    button.addEventListener("click", async () => {
+      const url = window.location.href;
+      const setStatus2 = (text, disabled) => updateButton(button, text, disabled);
+      try {
+        if (url.includes("bilibili")) {
+          await down_bili_danmu(setStatus2);
+        } else if (url.includes("v.qq.com")) {
+          setStatus2("下载中...", true);
+          await down_vqq_danmu();
+        }
+      } finally {
+        setStatus2("下载弹幕", false);
+      }
+    });
+    if (isBiliPage()) {
+      setupBiliButton(button);
+      return;
+    }
+    if (isVqqPage()) {
+      setupVqqButton(button);
+      return;
+    }
     Object.assign(button.style, {
       position: "fixed",
       left: "10px",
@@ -829,21 +859,89 @@
       fontSize: "14px",
       lineHeight: "1.4"
     });
-    button.addEventListener("click", async () => {
-      const url = window.location.href;
-      const setStatus2 = (text, disabled) => updateButton(button, text, disabled);
-      try {
-        if (url.includes("bilibili")) {
-          await down_bili_danmu(setStatus2);
-        } else if (url.includes("v.qq.com")) {
-          setStatus2("下载中...", true);
-          await down_vqq_danmu();
-        }
-      } finally {
-        setStatus2("下载弹幕", false);
+    document.body.appendChild(button);
+  }
+  function styleInlineButton(button, options = {}) {
+    Object.assign(button.style, {
+      position: "static",
+      transform: "none",
+      zIndex: "auto",
+      height: options.height || "22px",
+      minWidth: "64px",
+      margin: options.margin || "0 6px 0 8px",
+      padding: "0 8px",
+      backgroundColor: options.backgroundColor || "#fb7299",
+      color: "#fff",
+      border: "none",
+      borderRadius: "4px",
+      boxShadow: "none",
+      fontSize: "12px",
+      lineHeight: options.height || "22px",
+      whiteSpace: "nowrap",
+      verticalAlign: "middle"
+    });
+  }
+  function styleBiliButton(button) {
+    styleInlineButton(button);
+  }
+  function mountBiliButton(button) {
+    const dmRoot = document.querySelector(".bpx-player-dm-root");
+    const dmSwitch = dmRoot == null ? undefined : dmRoot.querySelector(".bpx-player-dm-switch");
+    if (!dmRoot || !dmSwitch) {
+      return false;
+    }
+    styleBiliButton(button);
+    if (button.parentElement !== dmRoot || button.nextElementSibling !== dmSwitch) {
+      dmSwitch.insertAdjacentElement("beforebegin", button);
+    }
+    return true;
+  }
+  function setupBiliButton(button) {
+    if (mountBiliButton(button)) {
+      return;
+    }
+    const observer = new MutationObserver(() => {
+      if (mountBiliButton(button)) {
+        observer.disconnect();
       }
     });
-    document.body.appendChild(button);
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
+  function styleVqqButton(button) {
+    styleInlineButton(button, {
+      height: "28px",
+      margin: "0 6px 0 0",
+      backgroundColor: "#14A3FF"
+    });
+  }
+  function mountVqqButton(button) {
+    const barrageControl = document.querySelector(".barrage-control-v2");
+    const barrageSwitch = barrageControl == null ? undefined : barrageControl.querySelector(".barrage-switch");
+    if (!barrageControl || !barrageSwitch) {
+      return false;
+    }
+    styleVqqButton(button);
+    if (button.parentElement !== barrageControl || button.nextElementSibling !== barrageSwitch) {
+      barrageSwitch.insertAdjacentElement("beforebegin", button);
+    }
+    return true;
+  }
+  function setupVqqButton(button) {
+    if (mountVqqButton(button)) {
+      return;
+    }
+    const observer = new MutationObserver(() => {
+      if (mountVqqButton(button)) {
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
   }
 
 })(saveAs);
