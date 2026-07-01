@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili、腾讯视频弹幕下载
 // @namespace    https://github.com/LesslsMore/bili-utils
-// @version      0.2.3
+// @version      0.2.4
 // @author       lesslsmore
 // @description  bilibili、腾讯视频弹幕下载，支持各类视频弹幕下载，包括需要会员的视频以及需要大会员的番剧。B站使用分段Protobuf接口，下载全量弹幕。
 // @license      MIT
@@ -561,7 +561,27 @@
     const page = Number(new URL(window.location.href).searchParams.get("p") || "1");
     return Number.isFinite(page) && page > 0 ? page : 1;
   }
-  function infoFromInitialVideoState(bv) {
+  function videoRefLabel(videoRef) {
+    return videoRef.type === "aid" ? `av${videoRef.value}` : videoRef.value;
+  }
+  function parseVideoRef(url) {
+    const bvMatch = url.match(/\/video\/(BV[a-zA-Z0-9]+)/);
+    if (bvMatch) {
+      return {
+        type: "bvid",
+        value: bvMatch[1]
+      };
+    }
+    const avMatch = url.match(/\/video\/av(\d+)/i);
+    if (avMatch) {
+      return {
+        type: "aid",
+        value: avMatch[1]
+      };
+    }
+    return null;
+  }
+  function infoFromInitialVideoState(videoRef) {
     var _a, _b;
     const state = window.__INITIAL_STATE__;
     const videoData = state == null ? undefined : state.videoData;
@@ -573,20 +593,19 @@
     return {
       cid: (page == null ? undefined : page.cid) || videoData.cid,
       aid: videoData.aid,
-      title: videoData.title || bv,
+      title: videoData.title || videoRefLabel(videoRef),
       longTitle: (page == null ? undefined : page.part) || "",
       duration: (page == null ? undefined : page.duration) || videoData.duration || 0
     };
   }
-  async function fetchVideoData(bv) {
+  async function fetchVideoData(videoRef) {
     var _a, _b;
-    const localInfo = infoFromInitialVideoState(bv);
+    const localInfo = infoFromInitialVideoState(videoRef);
     if ((localInfo == null ? undefined : localInfo.cid) && (localInfo == null ? undefined : localInfo.aid)) {
       return localInfo;
     }
-    const params = new URLSearchParams({
-      bvid: bv
-    });
+    const params = new URLSearchParams();
+    params.set(videoRef.type, videoRef.value);
     const json = await fetchJson(`${VIDEO_VIEW_API}?${params}`);
     if (json.code !== 0 || !json.data) {
       throw new Error(json.message || "无法获取视频信息");
@@ -596,7 +615,7 @@
     return {
       cid: page.cid || json.data.cid,
       aid: json.data.aid,
-      title: json.data.title || bv,
+      title: json.data.title || videoRefLabel(videoRef),
       longTitle: page.part || "",
       duration: page.duration || json.data.duration || 0
     };
@@ -673,14 +692,14 @@
   async function down_bili_danmu(onStatus) {
     const url = window.location.href;
     const epMatch = url.match(/\/bangumi\/play\/(ep\d+|ss\d+)/);
-    const bvMatch = url.match(/\/video\/(BV[a-zA-Z0-9]+)/);
+    const videoRef = parseVideoRef(url);
     let info;
     try {
       setStatus(onStatus, "获取视频信息...", true);
       if (epMatch) {
         info = await fetchInfo(epMatch[1]);
-      } else if (bvMatch) {
-        info = await fetchVideoData(bvMatch[1]);
+      } else if (videoRef) {
+        info = await fetchVideoData(videoRef);
       } else {
         alert("无法识别当前 B 站视频页面");
         return;
