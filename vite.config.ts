@@ -7,13 +7,17 @@ export default defineConfig({
         monkey({
             entry: 'src/main.js',
             userscript: {
-                name: 'bilibili、腾讯视频弹幕下载',
+                name: 'bilibili 字幕、bilibili/腾讯视频弹幕下载',
                 namespace: 'https://github.com/LesslsMore/bili-utils',
-                version: '0.2.4',
+                version: '0.3.0',
                 author: 'lesslsmore',
                 license: 'MIT',
-                description: 'bilibili、腾讯视频弹幕下载，支持各类视频弹幕下载，包括需要会员的视频以及需要大会员的番剧。B站使用分段Protobuf接口，下载全量弹幕。',
+                description: '下载 bilibili 普通/AI 字幕，以及 bilibili、腾讯视频全量弹幕。',
                 icon: 'https://i0.hdslb.com/bfs/static/jinkela/long/images/favicon.ico',
+                connect: [
+                    '*.hdslb.com',
+                    'subtitle.bilibili.com',
+                ],
                 match: [
                     '*://*.bilibili.com/bangumi/*',
                     '*://*.bilibili.com/video/*',

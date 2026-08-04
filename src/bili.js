@@ -716,24 +716,27 @@ function safeFileName(name) {
     return (name || 'danmaku').replace(/[\\/:*?"<>|]/g, '_');
 }
 
-async function down_bili_danmu(onStatus) {
+async function getCurrentBiliVideoInfo() {
     const url = window.location.href;
     const epMatch = url.match(/\/bangumi\/play\/(ep\d+|ss\d+)/);
     const videoRef = parseVideoRef(url);
 
+    if (epMatch) {
+        return fetchInfo(epMatch[1]);
+    }
+    if (videoRef) {
+        return fetchVideoData(videoRef);
+    }
+
+    throw new Error('无法识别当前 B 站视频页面');
+}
+
+async function down_bili_danmu(onStatus) {
     let info;
 
     try {
         setStatus(onStatus, '获取视频信息...', true);
-
-        if (epMatch) {
-            info = await fetchInfo(epMatch[1]);
-        } else if (videoRef) {
-            info = await fetchVideoData(videoRef);
-        } else {
-            alert('无法识别当前 B 站视频页面');
-            return;
-        }
+        info = await getCurrentBiliVideoInfo();
     } catch (error) {
         alert(`获取视频信息失败: ${error.message}`);
         return;
@@ -777,4 +780,6 @@ async function down_bili_danmu(onStatus) {
 
 export {
     down_bili_danmu,
+    getCurrentBiliVideoInfo,
+    safeFileName,
 };

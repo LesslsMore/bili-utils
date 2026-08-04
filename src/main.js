@@ -1,11 +1,14 @@
 import {down_bili_danmu} from './bili.js';
+import {down_bili_subtitle} from './bili-subtitle.js';
 import {interceptor} from './interceptor';
 import {down_vqq_danmu} from './vqq.js';
 
 const DM_DOWNLOAD_BUTTON_CLASS = 'bili-utils-dm-download';
+const SUBTITLE_DOWNLOAD_BUTTON_CLASS = 'bili-utils-subtitle-download';
 
 interceptor();
 createButton();
+createSubtitleButton();
 
 function updateButton(button, text, disabled) {
     button.textContent = text;
@@ -69,6 +72,28 @@ function createButton() {
         lineHeight: '1.4',
     });
     document.body.appendChild(button);
+}
+
+function createSubtitleButton() {
+    if (!isBiliPage()) {
+        return;
+    }
+
+    const button = document.createElement('button');
+    button.className = SUBTITLE_DOWNLOAD_BUTTON_CLASS;
+    updateButton(button, '下载字幕', false);
+
+    button.addEventListener('click', async () => {
+        const setStatus = (text, disabled) => updateButton(button, text, disabled);
+
+        try {
+            await down_bili_subtitle(setStatus);
+        } finally {
+            setStatus('下载字幕', false);
+        }
+    });
+
+    setupBiliButton(button);
 }
 
 function styleInlineButton(button, options = {}) {

@@ -1,17 +1,19 @@
-# bilibili、腾讯视频弹幕下载
+# bilibili 字幕、bilibili/腾讯视频弹幕下载
 
-bilibili、腾讯视频弹幕下载，支持各类视频弹幕下载，包括需要会员的视频以及需要大会员的番剧
+bilibili、腾讯视频弹幕下载，并支持下载 bilibili 普通字幕和 AI 字幕。
 
 
 ### 支持网站
 
 - [哔哩哔哩番剧](https://www.bilibili.com/bangumi/)
+- [哔哩哔哩视频](https://www.bilibili.com/video/)
 - [腾讯视频](https://v.qq.com/)
 
 ### 主要功能
 
 - 下载视频弹幕，支持需要会员的视频
 - 下载番剧对应剧集弹幕，支持需要会员的番剧
+- 下载 bilibili 普通字幕和 AI 字幕，可选择需要的轨道并打包为 SRT 字幕 ZIP
 
 ### 效果演示
 
@@ -41,6 +43,8 @@ bilibili、腾讯视频弹幕下载，支持各类视频弹幕下载，包括需
 下载下来的弹幕可以结合 [动漫弹幕播放](https://github.com/LesslsMore/anime-danmu-play) 中手动上传弹幕的功能实现免费的动漫弹幕在线观看
 
 ### 更新记录
+0.3.0  支持下载 bilibili 普通字幕和 AI 字幕
+
 0.1.3  支持 bilibili 新接口
 
 0.1.2  支持腾讯视频弹幕下载
