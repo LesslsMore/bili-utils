@@ -39,10 +39,13 @@ function createButton() {
                 await down_bili_danmu(setStatus);
             } else if (url.includes('v.qq.com')) {
                 setStatus('下载中...', true);
-                await down_vqq_danmu();
+                await down_vqq_danmu(setStatus);
             }
-        } finally {
             setStatus('下载弹幕', false);
+        } catch (error) {
+            console.error('下载弹幕失败:', error);
+            setStatus('下载失败', false);
+            setTimeout(() => setStatus('下载弹幕', false), 3000);
         }
     });
 
@@ -52,10 +55,81 @@ function createButton() {
     }
 
     if (isVqqPage()) {
+        // 腾讯视频部分内容有版权保护，播放器可能不会加载，按钮放在播放器外面，打开页面即可使用
         setupVqqButton(button);
         return;
     }
 
+    styleFloatingButton(button);
+    appendFloatingButton(button);
+}
+
+const VQQ_INTRO_CONTAINER_SELECTORS = [
+    '#MAIN_PAGE_CONTENT_ID > div.video-detail-intro-new > div.intro-detail-wrap > div > div.intro-tags.tags-wrap',
+    '#MAIN_PAGE_CONTENT_ID .video-detail-intro-new .intro-tags.tags-wrap',
+    '.video-detail-intro-new .intro-tags.tags-wrap',
+];
+
+function findVqqIntroContainer() {
+    for (const selector of VQQ_INTRO_CONTAINER_SELECTORS) {
+        const container = document.querySelector(selector);
+        if (container) {
+            return container;
+        }
+    }
+    return null;
+}
+
+function styleVqqButton(button) {
+    Object.assign(button.style, {
+        display: 'inline-flex',
+        alignItems: 'center',
+        alignSelf: 'center',
+        height: '28px',
+        margin: '0 0 0 8px',
+        padding: '0 12px',
+        backgroundColor: '#14A3FF',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '14px',
+        boxShadow: 'none',
+        fontSize: '13px',
+        lineHeight: '28px',
+        whiteSpace: 'nowrap',
+        verticalAlign: 'middle',
+    });
+}
+
+function mountVqqButton(button) {
+    const container = findVqqIntroContainer();
+    if (!container) {
+        return false;
+    }
+
+    styleVqqButton(button);
+    if (button.parentElement !== container) {
+        container.appendChild(button);
+    }
+    return true;
+}
+
+function setupVqqButton(button) {
+    mountVqqButton(button);
+
+    // 腾讯视频是单页应用，简介区域可能被重新渲染，按钮被移除时自动补回
+    const observer = new MutationObserver(() => {
+        if (!button.isConnected) {
+            mountVqqButton(button);
+        }
+    });
+
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+    });
+}
+
+function styleFloatingButton(button, backgroundColor = '#fb7299') {
     Object.assign(button.style, {
         position: 'fixed',
         left: '10px',
@@ -63,7 +137,7 @@ function createButton() {
         transform: 'translateY(-50%)',
         zIndex: '9999',
         padding: '10px 20px',
-        backgroundColor: '#fb7299',
+        backgroundColor,
         color: '#fff',
         border: 'none',
         borderRadius: '5px',
@@ -71,7 +145,10 @@ function createButton() {
         fontSize: '14px',
         lineHeight: '1.4',
     });
-    document.body.appendChild(button);
+}
+
+function appendFloatingButton(button) {
+    (document.body || document.documentElement).appendChild(button);
 }
 
 function createSubtitleButton() {
@@ -152,41 +229,3 @@ function setupBiliButton(button) {
     });
 }
 
-function styleVqqButton(button) {
-    styleInlineButton(button, {
-        height: '28px',
-        margin: '0 6px 0 0',
-        backgroundColor: '#14A3FF',
-    });
-}
-
-function mountVqqButton(button) {
-    const barrageControl = document.querySelector('.barrage-control-v2');
-    const barrageSwitch = barrageControl?.querySelector('.barrage-switch');
-    if (!barrageControl || !barrageSwitch) {
-        return false;
-    }
-
-    styleVqqButton(button);
-    if (button.parentElement !== barrageControl || button.nextElementSibling !== barrageSwitch) {
-        barrageSwitch.insertAdjacentElement('beforebegin', button);
-    }
-    return true;
-}
-
-function setupVqqButton(button) {
-    if (mountVqqButton(button)) {
-        return;
-    }
-
-    const observer = new MutationObserver(() => {
-        if (mountVqqButton(button)) {
-            observer.disconnect();
-        }
-    });
-
-    observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-    });
-}
