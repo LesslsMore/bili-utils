@@ -9,7 +9,7 @@ export default defineConfig({
             userscript: {
                 name: 'bilibili 字幕、bilibili/腾讯视频弹幕下载',
                 namespace: 'https://github.com/LesslsMore/bili-utils',
-                version: '0.3.0',
+                version: '0.3.1',
                 author: 'lesslsmore',
                 license: 'MIT',
                 description: '下载 bilibili 普通/AI 字幕，以及 bilibili、腾讯视频全量弹幕。',

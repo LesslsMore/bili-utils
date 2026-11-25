@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili 字幕、bilibili/腾讯视频弹幕下载
 // @namespace    https://github.com/LesslsMore/bili-utils
-// @version      0.3.0
+// @version      0.3.1
 // @author       lesslsmore
 // @description  下载 bilibili 普通/AI 字幕，以及 bilibili、腾讯视频全量弹幕。
 // @license      MIT
@@ -2029,6 +2029,9 @@ ${item.content}`;
       alert(`下载字幕失败: ${error.message}`);
     }
   }
+  const VQQ_BARRAGE_BASE_URL = "https://dm.video.qq.com/barrage/base/";
+  const VQQ_BARRAGE_SEGMENT_URL = "https://dm.video.qq.com/barrage/segment/";
+  const VQQ_SEGMENT_CONCURRENCY = 6;
   function get_api_info(url, payload, response) {
     if (url.includes("https://pbaccess.video.qq.com/trpc.barrage.custom_barrage.CustomBarrage/GetDMStartUpConfig")) {
       console.log("vqq", url, response);
@@ -2044,41 +2047,119 @@ ${item.content}`;
       });
     }
   }
-  async function down_vqq_danmu() {
-    const payload = localStorage.getItem("payload");
-    const segment_index = localStorage.getItem("segment_index");
-    const vid = JSON.parse(payload).vid;
-    await fetchAndMergeBarrages(JSON.parse(segment_index), vid);
+  function get_vid_from_url(url = window.location.href) {
+    try {
+      const parsed = new URL(url);
+      const fromQuery = parsed.searchParams.get("vid");
+      if (fromQuery) return fromQuery;
+      const match = parsed.pathname.match(/\/([A-Za-z0-9]{6,})\.html?$/);
+      return match ? match[1] : null;
+    } catch (error) {
+      return null;
+    }
   }
-  async function fetchAndMergeBarrages(segmentsData, vid) {
-    const baseUrl = `https://dm.video.qq.com/barrage/segment/${vid}/`;
-    const allBarrages = [];
-    const segmentNames = Object.values(segmentsData).map((s) => s.segment_name);
-    for (let i = 0; i < segmentNames.length; i++) {
-      const segmentName = segmentNames[i];
-      console.log(`正在请求片段 ${i + 1}/${segmentNames.length}: ${segmentName}`);
+  function get_stored_config() {
+    const payload = localStorage.getItem("payload");
+    const segmentIndex = localStorage.getItem("segment_index");
+    if (!payload || !segmentIndex) return null;
+    try {
+      const { vid } = JSON.parse(payload);
+      const segments = JSON.parse(segmentIndex);
+      if (vid && segments && typeof segments === "object" && Object.keys(segments).length) {
+        return { vid, segments };
+      }
+    } catch (error) {
+      console.warn("读取本地弹幕配置失败:", error);
+    }
+    return null;
+  }
+  async function fetch_segment_index(vid) {
+    const response = await fetch(VQQ_BARRAGE_BASE_URL + vid);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data || !data.segment_index || !Object.keys(data.segment_index).length) {
+      throw new Error("该视频没有可用的弹幕数据");
+    }
+    return data.segment_index;
+  }
+  async function request_segment(vid, segmentName, retries = 2) {
+    const url = `${VQQ_BARRAGE_SEGMENT_URL}${vid}/${segmentName}`;
+    let lastError;
+    for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const response = await fetch(baseUrl + segmentName);
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        if (data.barrage_list && Array.isArray(data.barrage_list)) {
-          allBarrages.push(...data.barrage_list);
-          console.log(`  成功获取 ${data.barrage_list.length} 条弹幕`);
-        } else {
-          console.log("  该片段没有弹幕数据");
-        }
+        return Array.isArray(data.barrage_list) ? data.barrage_list : [];
       } catch (error) {
-        console.error(`请求片段 ${segmentName} 失败:`, error);
+        lastError = error;
+        if (attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+        }
       }
     }
-    const result = { barrage_list: allBarrages };
-    console.log(`总共获取到 ${allBarrages.length} 条弹幕`);
-    const xmlContent = convertToBilibiliXML(allBarrages);
+    throw lastError;
+  }
+  async function down_vqq_danmu(setStatus2 = () => {
+  }) {
+    let vid = get_vid_from_url();
+    let segments = null;
+    if (vid) {
+      try {
+        segments = await fetch_segment_index(vid);
+      } catch (error) {
+        console.warn(`通过 vid ${vid} 获取弹幕索引失败:`, error);
+      }
+    }
+    if (!segments) {
+      const stored = get_stored_config();
+      if (!stored) throw new Error("未找到弹幕数据，请确认当前页面是腾讯视频播放页");
+      vid = stored.vid;
+      segments = stored.segments;
+    }
+    await fetchAndMergeBarrages(segments, vid, setStatus2);
+  }
+  async function fetchAndMergeBarrages(segmentsData, vid, setStatus2 = () => {
+  }) {
+    const segmentNames = Object.values(segmentsData).sort((a, b) => Number(a.segment_start || 0) - Number(b.segment_start || 0)).map((segment) => segment.segment_name).filter(Boolean);
+    const total = segmentNames.length;
+    const allBarrages = [];
+    const failedSegments = [];
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < total) {
+        const segmentName = segmentNames[cursor++];
+        try {
+          const list = await request_segment(vid, segmentName);
+          allBarrages.push(...list);
+        } catch (error) {
+          console.error(`请求片段 ${segmentName} 失败:`, error);
+          failedSegments.push(segmentName);
+        }
+        setStatus2(`下载中 ${Math.min(cursor, total)}/${total}`, true);
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(VQQ_SEGMENT_CONCURRENCY, total) }, worker)
+    );
+    const seen = /* @__PURE__ */ new Set();
+    const uniqueBarrages = allBarrages.filter((barrage) => {
+      const key = barrage.id || `${barrage.time_offset}:${barrage.content}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    uniqueBarrages.sort((a, b) => parseInt(a.time_offset || 0) - parseInt(b.time_offset || 0));
+    if (failedSegments.length) {
+      console.warn(`有 ${failedSegments.length} 个片段下载失败:`, failedSegments);
+    }
+    console.log(`总共获取到 ${uniqueBarrages.length} 条弹幕`);
+    const xmlContent = convertToBilibiliXML(uniqueBarrages);
     const blob = new Blob([xmlContent], {
       type: "application/xml;charset=utf-8"
     });
     saveAs(blob, `${vid}.xml`);
-    return result;
+    return { barrage_list: uniqueBarrages, failed_segments: failedSegments };
   }
   function convertToBilibiliXML(barrageList) {
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<i>\n';
@@ -2113,6 +2194,14 @@ ${item.content}`;
   }
   const DM_DOWNLOAD_BUTTON_CLASS = "bili-utils-dm-download";
   const SUBTITLE_DOWNLOAD_BUTTON_CLASS = "bili-utils-subtitle-download";
+  const VQQ_INTRO_CONTAINER_SELECTORS = [
+    "#MAIN_PAGE_CONTENT_ID > div.video-detail-intro-new > div.intro-detail-wrap > div > div.intro-tags.tags-wrap",
+    "#MAIN_PAGE_CONTENT_ID .video-detail-intro-new .intro-tags.tags-wrap",
+    ".video-detail-intro-new .intro-tags.tags-wrap",
+    // 普通视频等页面结构不同，没有 tags 区域时退回到简介区域
+    "#MAIN_PAGE_CONTENT_ID .video-detail-intro-new .intro-detail-wrap",
+    "#MAIN_PAGE_CONTENT_ID .video-detail-intro-new"
+  ];
   interceptor();
   createButton();
   createSubtitleButton();
@@ -2140,10 +2229,13 @@ ${item.content}`;
           await down_bili_danmu(setStatus2);
         } else if (url.includes("v.qq.com")) {
           setStatus2("下载中...", true);
-          await down_vqq_danmu();
+          await down_vqq_danmu(setStatus2);
         }
-      } finally {
         setStatus2("下载弹幕", false);
+      } catch (error) {
+        console.error("下载弹幕失败:", error);
+        setStatus2("下载失败", false);
+        setTimeout(() => setStatus2("下载弹幕", false), 3e3);
       }
     });
     if (isBiliPage()) {
@@ -2154,6 +2246,61 @@ ${item.content}`;
       setupVqqButton(button);
       return;
     }
+    styleFloatingButton(button);
+    appendFloatingButton(button);
+  }
+  function findVqqIntroContainer() {
+    for (const selector of VQQ_INTRO_CONTAINER_SELECTORS) {
+      const container = document.querySelector(selector);
+      if (container) {
+        return container;
+      }
+    }
+    return null;
+  }
+  function styleVqqButton(button) {
+    Object.assign(button.style, {
+      display: "inline-flex",
+      alignItems: "center",
+      alignSelf: "center",
+      height: "28px",
+      margin: "0 0 0 8px",
+      padding: "0 12px",
+      backgroundColor: "#14A3FF",
+      color: "#fff",
+      border: "none",
+      borderRadius: "14px",
+      boxShadow: "none",
+      fontSize: "13px",
+      lineHeight: "28px",
+      whiteSpace: "nowrap",
+      verticalAlign: "middle"
+    });
+  }
+  function mountVqqButton(button) {
+    const container = findVqqIntroContainer();
+    if (!container) {
+      return false;
+    }
+    styleVqqButton(button);
+    if (button.parentElement !== container) {
+      container.appendChild(button);
+    }
+    return true;
+  }
+  function setupVqqButton(button) {
+    mountVqqButton(button);
+    const observer = new MutationObserver(() => {
+      if (!button.isConnected) {
+        mountVqqButton(button);
+      }
+    });
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
+  function styleFloatingButton(button, backgroundColor = "#fb7299") {
     Object.assign(button.style, {
       position: "fixed",
       left: "10px",
@@ -2161,7 +2308,7 @@ ${item.content}`;
       transform: "translateY(-50%)",
       zIndex: "9999",
       padding: "10px 20px",
-      backgroundColor: "#fb7299",
+      backgroundColor,
       color: "#fff",
       border: "none",
       borderRadius: "5px",
@@ -2169,7 +2316,9 @@ ${item.content}`;
       fontSize: "14px",
       lineHeight: "1.4"
     });
-    document.body.appendChild(button);
+  }
+  function appendFloatingButton(button) {
+    (document.body || document.documentElement).appendChild(button);
   }
   function createSubtitleButton() {
     if (!isBiliPage()) {
@@ -2229,39 +2378,6 @@ ${item.content}`;
     }
     const observer = new MutationObserver(() => {
       if (mountBiliButton(button)) {
-        observer.disconnect();
-      }
-    });
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true
-    });
-  }
-  function styleVqqButton(button) {
-    styleInlineButton(button, {
-      height: "28px",
-      margin: "0 6px 0 0",
-      backgroundColor: "#14A3FF"
-    });
-  }
-  function mountVqqButton(button) {
-    const barrageControl = document.querySelector(".barrage-control-v2");
-    const barrageSwitch = barrageControl == null ? undefined : barrageControl.querySelector(".barrage-switch");
-    if (!barrageControl || !barrageSwitch) {
-      return false;
-    }
-    styleVqqButton(button);
-    if (button.parentElement !== barrageControl || button.nextElementSibling !== barrageSwitch) {
-      barrageSwitch.insertAdjacentElement("beforebegin", button);
-    }
-    return true;
-  }
-  function setupVqqButton(button) {
-    if (mountVqqButton(button)) {
-      return;
-    }
-    const observer = new MutationObserver(() => {
-      if (mountVqqButton(button)) {
         observer.disconnect();
       }
     });
