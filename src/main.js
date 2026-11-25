@@ -6,6 +6,16 @@ import {down_vqq_danmu} from './vqq.js';
 const DM_DOWNLOAD_BUTTON_CLASS = 'bili-utils-dm-download';
 const SUBTITLE_DOWNLOAD_BUTTON_CLASS = 'bili-utils-subtitle-download';
 
+// 必须在 createButton() 之前初始化：腾讯视频按钮首次挂载时会读取这个列表
+const VQQ_INTRO_CONTAINER_SELECTORS = [
+    '#MAIN_PAGE_CONTENT_ID > div.video-detail-intro-new > div.intro-detail-wrap > div > div.intro-tags.tags-wrap',
+    '#MAIN_PAGE_CONTENT_ID .video-detail-intro-new .intro-tags.tags-wrap',
+    '.video-detail-intro-new .intro-tags.tags-wrap',
+    // 普通视频等页面结构不同，没有 tags 区域时退回到简介区域
+    '#MAIN_PAGE_CONTENT_ID .video-detail-intro-new .intro-detail-wrap',
+    '#MAIN_PAGE_CONTENT_ID .video-detail-intro-new',
+];
+
 interceptor();
 createButton();
 createSubtitleButton();
@@ -63,12 +73,6 @@ function createButton() {
     styleFloatingButton(button);
     appendFloatingButton(button);
 }
-
-const VQQ_INTRO_CONTAINER_SELECTORS = [
-    '#MAIN_PAGE_CONTENT_ID > div.video-detail-intro-new > div.intro-detail-wrap > div > div.intro-tags.tags-wrap',
-    '#MAIN_PAGE_CONTENT_ID .video-detail-intro-new .intro-tags.tags-wrap',
-    '.video-detail-intro-new .intro-tags.tags-wrap',
-];
 
 function findVqqIntroContainer() {
     for (const selector of VQQ_INTRO_CONTAINER_SELECTORS) {

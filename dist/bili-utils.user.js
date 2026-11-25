@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         bilibili 字幕、bilibili/腾讯视频弹幕下载
 // @namespace    https://github.com/LesslsMore/bili-utils
-// @version      0.3.0
+// @version      0.3.1
 // @author       lesslsmore
 // @description  下载 bilibili 普通/AI 字幕，以及 bilibili、腾讯视频全量弹幕。
 // @license      MIT
@@ -2194,6 +2194,14 @@ ${item.content}`;
   }
   const DM_DOWNLOAD_BUTTON_CLASS = "bili-utils-dm-download";
   const SUBTITLE_DOWNLOAD_BUTTON_CLASS = "bili-utils-subtitle-download";
+  const VQQ_INTRO_CONTAINER_SELECTORS = [
+    "#MAIN_PAGE_CONTENT_ID > div.video-detail-intro-new > div.intro-detail-wrap > div > div.intro-tags.tags-wrap",
+    "#MAIN_PAGE_CONTENT_ID .video-detail-intro-new .intro-tags.tags-wrap",
+    ".video-detail-intro-new .intro-tags.tags-wrap",
+    // 普通视频等页面结构不同，没有 tags 区域时退回到简介区域
+    "#MAIN_PAGE_CONTENT_ID .video-detail-intro-new .intro-detail-wrap",
+    "#MAIN_PAGE_CONTENT_ID .video-detail-intro-new"
+  ];
   interceptor();
   createButton();
   createSubtitleButton();
@@ -2241,11 +2249,6 @@ ${item.content}`;
     styleFloatingButton(button);
     appendFloatingButton(button);
   }
-  const VQQ_INTRO_CONTAINER_SELECTORS = [
-    "#MAIN_PAGE_CONTENT_ID > div.video-detail-intro-new > div.intro-detail-wrap > div > div.intro-tags.tags-wrap",
-    "#MAIN_PAGE_CONTENT_ID .video-detail-intro-new .intro-tags.tags-wrap",
-    ".video-detail-intro-new .intro-tags.tags-wrap"
-  ];
   function findVqqIntroContainer() {
     for (const selector of VQQ_INTRO_CONTAINER_SELECTORS) {
       const container = document.querySelector(selector);
